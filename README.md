@@ -1,2 +1,2 @@
 # robrisk
-CVaR risk-based learning with potentially heavy-tailed feedback.
+robrisk: CVaR risk-based learning under potentially heavy-tailed feedback.
