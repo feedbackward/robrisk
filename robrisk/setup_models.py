@@ -23,6 +23,7 @@ def get_model(name, paras_init=None, rg=None, **kwargs):
             w_init += rg.uniform(low=-init_range,
                                  high=init_range,
                                  size=w_init.shape)
+            paras_init = {}
             paras_init["w"] = w_init
         except KeyError:
             ## If no w_star given, do nothing special.

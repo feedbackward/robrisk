@@ -41,8 +41,10 @@ def get_eval(loss_name=None, model_name=None, **kwargs):
         if kwargs["use_cvar"]:
             ## If CVaR loss used for training, then include original too.
             loss_base = get_loss(name=loss_name, **{"use_cvar": False})
+            loss_base_eval = lambda model, X, y: np.mean(loss_base(model=model,
+                                                                   X=X, y=y))
             eval_dict.update({loss_name+"-cvar": loss_eval,
-                              loss_name: loss_base})
+                              loss_name: loss_base_eval})
         else:
             ## Otherwise there is only the original to add.
             eval_dict.update({loss_name: loss_eval})
