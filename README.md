@@ -1,5 +1,4 @@
-# robrisk
-robrisk: CVaR risk-based learning under potentially heavy-tailed feedback.
+# robrisk: learning with diverse risk functions under potentially heavy-tailed feedback
 
 This repository will house code for recreating the numerical experiments done in the following paper:
 
