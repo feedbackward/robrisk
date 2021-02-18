@@ -190,12 +190,12 @@ def get_data_simulated(paras, rg=None):
     y = true_model(X=X) + noise
     
     ## Split into appropriate sub-views and return.
-    X_train = X[0:n_train,:]
-    y_train = y[0:n_train,:]
-    X_val = X[n_train:(n_train+n_val),:]
-    y_val = y[n_train:(n_train+n_val),:]
-    X_test = X[(n_train+n_val):,:]
-    y_test = y[(n_train+n_val):,:]
+    X_train = X[0:n_train,...]
+    y_train = y[0:n_train,...]
+    X_val = X[n_train:(n_train+n_val),...]
+    y_val = y[n_train:(n_train+n_val),...]
+    X_test = X[(n_train+n_val):,...]
+    y_test = y[(n_train+n_val):,...]
     return (X_train, y_train, X_val, y_val, X_test, y_test, paras)
 
 
