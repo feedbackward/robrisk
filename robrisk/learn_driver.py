@@ -109,7 +109,7 @@ if __name__ == "__main__":
         
         ## Model setup.
         model = get_model(name=args.model,
-                          w_init=None,
+                          paras_init=None,
                           rg=rg,
                           **loss_kwargs, **model_kwargs, **ds_paras)
         
