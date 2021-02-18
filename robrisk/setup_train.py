@@ -13,8 +13,12 @@ def train_epoch(algo, loss, X, y, batch_size=None, verbose=False):
     
     n = len(X)
     idx_start = 0
-    idx_stop = n if batch_size is None else min(batch_size, n)
 
+    ## Cover the full-batch case.
+    if batch_size is None or batch_size == 0:
+        batch_size = n
+    idx_stop = min(batch_size, n)
+    
     ## Run the algorithm for one epoch.
     for onestep in algo:
         algo.update(X=X[idx_start:idx_stop,...],
