@@ -55,6 +55,12 @@ For the `[SHA *]` placeholders, the following are safe, tested values (tested 20
 - For `[SHA mml]`, replace with `6ee6a8f924b610ccfb9c5239e852ac7df72cf14c`.
 - For `[SHA sgd-roboost]`, replace with `47cc2e9e4b240590bc3ed369086c8e78bba194a7`.
 
+One __important__ clerical step is to modify the variable `todo_roboost` in `sgd-roboost/roboost/setup_roboost.py`; the default is a list of many different methods, but for our purposes here, we will only use (and indeed only allow) one, although any one is fine. The default used in all our relevant experiments is as follows:
+
+```
+todo_roboost = ["valid-robust"]
+```
+
 With this preparation in place, we can get to running the experiments. At a high level, we have basically three types of files:
 
 - __Setup files:__ these take the form `setup_*.py`.
