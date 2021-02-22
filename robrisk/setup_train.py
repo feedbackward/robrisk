@@ -4,7 +4,8 @@
 ###############################################################################
 
 
-def train_epoch(algo, loss, X, y, batch_size=None, verbose=False):
+def train_epoch(algo, loss, X, y, batch_size=None,
+                algo_main=None, verbose=False):
 
     if verbose:
         print(
@@ -23,6 +24,8 @@ def train_epoch(algo, loss, X, y, batch_size=None, verbose=False):
     for onestep in algo:
         algo.update(X=X[idx_start:idx_stop,...],
                     y=y[idx_start:idx_stop,...])
+        if algo_main is not None:
+            algo_main.update()
         idx_start += batch_size
         idx_stop = min(idx_start+batch_size, n)
         to_stop = idx_start >= n

@@ -2,6 +2,7 @@
 
 ## External modules.
 import argparse
+from copy import deepcopy
 import json
 import numpy as np
 import os
@@ -14,6 +15,7 @@ from setup_eval import get_eval, eval_model, eval_write
 from setup_losses import get_loss
 from setup_models import get_model
 from setup_results import results_dir
+from setup_train import train_epoch
 from roboost.setup_roboost import do_roboost, todo_roboost
 
 
@@ -24,15 +26,23 @@ from roboost.setup_roboost import do_roboost, todo_roboost
 
 parser = argparse.ArgumentParser(description="Arguments for driver script.")
 
-parser.add_argument("--algo",
-                    help="Algorithm class to test (default: SGD).",
+parser.add_argument("--algo-ancillary",
+                    help="Ancillary algorithm class (default: SGD).",
                     type=str, default="SGD", metavar="S")
+parser.add_argument("--algo-main",
+                    help="Main algorithm class to test (default: '').",
+                    type=str, default="", metavar="S")
 parser.add_argument("--alpha",
                     help="Set CVaR level to 1-alpha (default: 0.05).",
                     type=float, default=0.05, metavar="F")
 parser.add_argument("--batch-size",
                     help="Mini-batch size for algorithms (default: 1).",
                     type=int, default=1, metavar="N")
+parser.add_argument("--entropy",
+                    help="For data-gen seed sequence (default is random).",
+                    type=int,
+                    default=np.random.SeedSequence().entropy,
+                    metavar="N")
 parser.add_argument("--data",
                     help="Specify data set to be used (default: None).",
                     type=str, default=None, metavar="S")
@@ -62,7 +72,7 @@ parser.add_argument("--task-name",
                     type=str, default="default", metavar="S")
 
 
-## Setup of random generator.
+## Setup of main random generator.
 ss = np.random.SeedSequence()
 rg = np.random.default_rng(seed=ss)
 
@@ -72,15 +82,26 @@ if args.data is None:
     raise TypeError("Given --data=None, should be a string.")
 
 ## Check to ensure that just one roboost procedure is used.
-if len(todo_roboost) > 1:
-    raise ValueError("Must specific ONE roboost technique only.")
+if len(todo_roboost) != 1:
+    raise ValueError("Must specific one and only one roboost technique.")
+else:
+    todo_roboost = todo_roboost[0]
 
 ## Name to be used identifying the results etc. of this experiment.
-towrite_name = args.task_name+"-"+"_".join([args.model, args.algo])
+towrite_name = args.task_name+"-"+"_".join([args.model,
+                                            "rb",
+                                            args.algo_ancillary])
+if len(args.algo_main) > 0:
+    towrite_name += "_{}".format(args.algo_main)
 
 ## Prepare a directory to save results.
 towrite_dir = os.path.join(results_dir, args.data)
 makedir_safe(towrite_dir)
+
+## Setup of manually-specified seed sequence for data generation.
+ss_data_parent = np.random.SeedSequence(args.entropy)
+ss_data_children = ss_data_parent.spawn(args.num_trials)
+rgs_data = [np.random.default_rng(seed=s) for s in ss_data_children]
 
 
 ## Main process.
@@ -95,12 +116,24 @@ if __name__ == "__main__":
     
     ## Start the loop over independent trials.
     for trial in range(args.num_trials):
+
+        ## Get trial-specific random generator.
+        rg_data = rgs_data[trial]
         
         ## Load in data.
         print("Doing data prep.")
         (X_train, y_train, X_val, y_val,
-         X_test, y_test, ds_paras) = get_data(dataset=args.data, rg=rg)
+         X_test, y_test, ds_paras) = get_data(dataset=args.data, rg=rg_data)
         n_per_subset = len(X_train) // args.num_processes
+
+        ## Check if validation data is to be used; if not, all for training.
+        if "valid" not in todo_roboost:
+            if X_val is not None:
+                if len(X_val) > 0:
+                    X_train = np.vstack([X_train, X_val])
+            if y_val is not None:
+                if len(y_val) > 0:
+                    y_train = np.vstack([y_train, y_val])
 
         ## Indices to evenly split the training data (toss the excess).
         data_indices = []
@@ -116,56 +149,74 @@ if __name__ == "__main__":
                              model_name=args.model,
                              **loss_kwargs, **ds_paras)
 
-        ## Initialize sub-process models and prepare a candidate array.
-        models = []
-        cand_array = []
+        ## Initialize sub-process models.
+        models_ancillary = []
+        models_main = []
         for j in range(args.num_processes):
 
             ## Arguments for models.
             model_kwargs = {}
 
-            ## Model construction.
-            model = get_model(name=args.model,
-                              paras_init=None,
-                              rg=rg,
-                              **loss_kwargs, **model_kwargs, **ds_paras)
-            cand_array.append(
-                np.expand_dims(a=np.copy(model.paras["w"]),axis=0)
+            ## Construct and append models as needed.
+            models_ancillary.append(
+                get_model(
+                    name=args.model,
+                    paras_init=None,
+                    rg=rg,
+                    **loss_kwargs, **model_kwargs, **ds_paras
+                )
             )
-            models.append(model)
-        
-        cand_array = np.vstack(cand_array)
-        
-        ## Next replace the model parameters with views of cand_array.
-        for j, model in enumerate(models):
-            model.paras["w"] = cand_array[j,...]
+            if args.algo_main is not None and len(args.algo_main) > 0:
+                models_main.append(
+                    get_model(
+                        name=args.model,
+                        paras_init=deepcopy(models_ancillary[j].paras),
+                        rg=rg,
+                        **loss_kwargs, **model_kwargs, **ds_paras
+                    )
+                )
+            else:
+                models_main.append(None)
 
-        ## Prepare the carrier model.
+        ## Finally, prepare the carrier model.
         model_kwargs = {}
-        model_carrier = get_model(name=args.model,
-                                  paras_init=None,
-                                  rg=rg,
-                                  **loss_kwargs, **model_kwargs, **ds_paras)
-
+        model_carrier = get_model(
+            name=args.model,
+            paras_init=None,
+            rg=rg,
+            **loss_kwargs, **model_kwargs, **ds_paras
+        )
+        
         ## Prepare algorithms.
         algos = []
-        for j, model in enumerate(models):
+        zipped_models = zip(models_ancillary, models_main)
+        for j, (model_ancillary, model_main) in enumerate(zipped_models):
 
             ## Arguments for algorithms.
             algo_kwargs = {}
-            model_dim = model.paras["w"].size
+            model_dim = np.array(
+                [p.size for pn, p in model_ancillary.paras.items()]
+            ).sum()
             algo_kwargs.update(
                 {"num_data": len(X_train),
                  "step_size": args.step_size/np.sqrt(model_dim)}
             )
 
-            ## Construct algorithm.
-            algo = get_algo(
-                name=args.algo,
-                model=model,
-                loss=loss,
-                **ds_paras, **algo_kwargs
+            ## Construct and append algorithms.
+            algos.append(
+                get_algo(
+                    name=args.algo_ancillary,
+                    model=model_ancillary,
+                    loss=loss,
+                    name_main=args.algo_main,
+                    model_main=model_main,
+                    **ds_paras, **algo_kwargs
+                )
             )
+
+            ## Final check for main model (if applicable).
+            if algos[j][1] is None:
+                models_main[j] = None
         
         ## Prepare storage for performance evaluation this trial.
         store_train = {
@@ -193,32 +244,52 @@ if __name__ == "__main__":
 
             ## Zip up the worker elements, and put them to work.
             zipped_train = zip(algos, data_indices)
-            for (algo, data_idx) in zipped_train:
+            for num, (algopair, data_idx) in enumerate(zipped_train):
+                
+                algo_ancillary, algo_main = algopair
                 
                 ## Carry out one epoch's worth of training.
-                train_epoch(algo=algo,
+                train_epoch(algo=algo_ancillary,
                             loss=loss,
                             X=X_train[data_idx,...],
                             y=y_train[data_idx,...],
-                            batch_size=args.batch_size)
+                            batch_size=args.batch_size,
+                            algo_main=algo_main)
+            
+            ## Prepare reference models for roboost sub-routine.
+            if args.algo_main is None:
+                ref_models = models_ancillary
+            else:
+                ref_models = models_main
 
-            ## Do robust boosting and evaluate performance.
-            for j, rb in enumerate(todo_roboost):
+            ## Construct the candidate arrays for roboost convenience.
+            cand_dict = {}
+            for pn, p in model_carrier.paras.items():
+                cand_array = []
+                for model in ref_models:
+                    cand_array.append(
+                        np.expand_dims(
+                            a=np.copy(model.paras[pn]),axis=0
+                        )
+                    )
+                cand_dict[pn] = np.vstack(cand_array)
 
-                do_roboost(model_todo=model_carrier,
-                           ref_models=models,
-                           cand_array=cand_array,
-                           data_val=(X_val,y_val),
-                           loss=loss,
-                           rb_method=rb,
-                           rg=rg)
-                
-                eval_model(epoch=epoch,
-                           model=model_carrier,
-                           storage=storage,
-                           data=(X_train,y_train,X_test,y_test),
-                           eval_dict=eval_dict)
+            ## Robust boosting of the underlying sub-processes.
+            do_roboost(model_todo=model_carrier,
+                       ref_models=ref_models,
+                       cand_dict=cand_dict,
+                       data_val=(X_val,y_val),
+                       loss=loss,
+                       rb_method=todo_roboost,
+                       rg=rg)
 
+            ## Evaluate the output of roboost; stored in carrier.
+            eval_model(epoch=epoch,
+                       model=model_carrier,
+                       storage=storage,
+                       data=(X_train,y_train,X_test,y_test),
+                       eval_dict=eval_dict)
+            
             print("(Tr {}) Ep {} finished.".format(trial, epoch), "\n")
 
         ## Write performance for this trial to disk.
@@ -230,8 +301,8 @@ if __name__ == "__main__":
     ## Write a JSON file to disk that summarizes key experiment parameters.
     dict_to_json = vars(args)
     dict_to_json.update({
-        "entropy": ss.entropy, # for reproducability.
-        "todo_roboost": todo_roboost # for reference.
+        "ss_entropy": ss.entropy,
+        "ss_data_entropy": args.entropy
     })
     towrite_json = os.path.join(towrite_dir, towrite_name+".json")
     with open(towrite_json, "w", encoding="utf-8") as f:

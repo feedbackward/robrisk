@@ -2,6 +2,7 @@
 
 ## External modules.
 import argparse
+from copy import deepcopy
 import json
 import numpy as np
 import os
@@ -24,9 +25,12 @@ from setup_train import train_epoch
 
 parser = argparse.ArgumentParser(description="Arguments for driver script.")
 
-parser.add_argument("--algo",
-                    help="Algorithm class to test (default: SGD).",
+parser.add_argument("--algo-ancillary",
+                    help="Ancillary algorithm class (default: SGD).",
                     type=str, default="SGD", metavar="S")
+parser.add_argument("--algo-main",
+                    help="Main algorithm class to test (default: '').",
+                    type=str, default="", metavar="S")
 parser.add_argument("--alpha",
                     help="Set CVaR level to 1-alpha (default: 0.05).",
                     type=float, default=0.05, metavar="F")
@@ -36,6 +40,11 @@ parser.add_argument("--batch-size",
 parser.add_argument("--data",
                     help="Specify data set to be used (default: None).",
                     type=str, default=None, metavar="S")
+parser.add_argument("--entropy",
+                    help="For data-gen seed sequence (default is random).",
+                    type=int,
+                    default=np.random.SeedSequence().entropy,
+                    metavar="N")
 parser.add_argument("--loss",
                     help="Loss name. (default: quadratic)",
                     type=str, default="quadratic", metavar="S")
@@ -68,11 +77,19 @@ if args.data is None:
     raise TypeError("Given --data=None, should be a string.")
 
 ## Name to be used identifying the results etc. of this experiment.
-towrite_name = args.task_name+"-"+"_".join([args.model, args.algo])
+towrite_name = args.task_name+"-"+"_".join([args.model,
+                                            args.algo_ancillary])
+if len(args.algo_main) > 0:
+    towrite_name += "_{}".format(args.algo_main)
 
 ## Prepare a directory to save results.
 towrite_dir = os.path.join(results_dir, args.data)
 makedir_safe(towrite_dir)
+
+## Setup of manually-specified seed sequence for data generation.
+ss_data_parent = np.random.SeedSequence(args.entropy)
+ss_data_children = ss_data_parent.spawn(args.num_trials)
+rgs_data = [np.random.default_rng(seed=s) for s in ss_data_children]
 
 
 ## Main process.
@@ -93,11 +110,22 @@ if __name__ == "__main__":
     
     ## Start the loop over independent trials.
     for trial in range(args.num_trials):
+
+        ## Get trial-specific random generator.
+        rg_data = rgs_data[trial]
         
         ## Load in data.
         print("Doing data prep.")
         (X_train, y_train, X_val, y_val,
-         X_test, y_test, ds_paras) = get_data(dataset=args.data, rg=rg)
+         X_test, y_test, ds_paras) = get_data(dataset=args.data, rg=rg_data)
+
+        ## Validation data not used here; use all for training.
+        if X_val is not None:
+            if len(X_val) > 0:
+                X_train = np.vstack([X_train, X_val])
+        if y_val is not None:
+            if len(y_val) > 0:
+                y_train = np.vstack([y_train, y_val])
         
         ## Data index.
         data_idx = np.arange(len(X_train))
@@ -108,23 +136,42 @@ if __name__ == "__main__":
                              **loss_kwargs, **ds_paras)
         
         ## Model setup.
-        model = get_model(name=args.model,
-                          paras_init=None,
-                          rg=rg,
-                          **loss_kwargs, **model_kwargs, **ds_paras)
+        model_ancillary = get_model(
+            name=args.model,
+            paras_init=None,
+            rg=rg,
+            **loss_kwargs, **model_kwargs, **ds_paras
+        )
+        if args.algo_main is not None and len(args.algo_main) > 0:
+            model_main = get_model(
+                name=args.model,
+                paras_init=deepcopy(model_ancillary.paras),
+                rg=rg,
+                **loss_kwargs, **model_kwargs, **ds_paras
+            )
+        else:
+            model_main = None
         
         ## Prepare algorithms.
-        model_dim = model.paras["w"].size
+        model_dim = np.array(
+            [p.size for pn, p in model_ancillary.paras.items()]
+        ).sum()
         algo_kwargs.update(
             {"num_data": len(X_train),
              "step_size": args.step_size/np.sqrt(model_dim)}
         )
-        algo = get_algo(
-            name=args.algo,
-            model=model,
+        algo_ancillary, algo_main = get_algo(
+            name=args.algo_ancillary,
+            model=model_ancillary,
             loss=loss,
+            name_main=args.algo_main,
+            model_main=model_main,
             **ds_paras, **algo_kwargs
         )
+        
+        ## Final check for main model (if applicable).
+        if algo_main is None:
+            model_main = None
         
         ## Prepare storage for performance evaluation this trial.
         store_train = {
@@ -152,15 +199,20 @@ if __name__ == "__main__":
             y_train = y_train[data_idx,...]
 
             ## Carry out one epoch's worth of training.
-            train_epoch(algo=algo,
+            train_epoch(algo=algo_ancillary,
                         loss=loss,
                         X=X_train,
                         y=y_train,
-                        batch_size=args.batch_size)
+                        batch_size=args.batch_size,
+                        algo_main=algo_main)
 
             ## Evaluate performance of the sub-process candidates.
+            if model_main is not None:
+                model_to_eval = model_main
+            else:
+                model_to_eval = model_ancillary
             eval_model(epoch=epoch,
-                       model=model,
+                       model=model_to_eval,
                        storage=storage,
                        data=(X_train,y_train,X_test,y_test),
                        eval_dict=eval_dict)
@@ -177,7 +229,8 @@ if __name__ == "__main__":
     ## Write a JSON file to disk that summarizes key experiment parameters.
     dict_to_json = vars(args)
     dict_to_json.update({
-        "entropy": ss.entropy # for reproducability.
+        "ss_entropy": ss.entropy,
+        "ss_data_entropy": args.entropy
     })
     towrite_json = os.path.join(towrite_dir, towrite_name+".json")
     with open(towrite_json, "w", encoding="utf-8") as f:
