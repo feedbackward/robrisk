@@ -92,7 +92,6 @@ ss_data_children = ss_data_parent.spawn(args.num_trials)
 rgs_data = [np.random.default_rng(seed=s) for s in ss_data_children]
 
 
-## Main process.
 if __name__ == "__main__":
 
     ## Arguments for losses.
@@ -188,7 +187,7 @@ if __name__ == "__main__":
             store_test = {}
         storage = (store_train, store_test)
         
-        ## Loop over epochs, done in the parent process.
+        ## Loop over epochs.
         for epoch in range(args.num_epochs):
             
             print("(Tr {}) Ep {} starting.".format(trial, epoch))
@@ -206,7 +205,7 @@ if __name__ == "__main__":
                         batch_size=args.batch_size,
                         algo_main=algo_main)
 
-            ## Evaluate performance of the sub-process candidates.
+            ## Evaluate performance.
             if model_main is not None:
                 model_to_eval = model_main
             else:
