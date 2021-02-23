@@ -80,6 +80,8 @@ Additional details will be provided in the demo notebook provided. The overall f
 
 The `descriptor` depends on the evaluation metrics used, all specified in `setup_eval.py`. As for the rest of the elements in the same, these are determined completely by the experimental parameters passed via the execution script run. Please see the demo notebook linked below for more detailed information.
 
+Finally, we note that there are two minor differences between the tests implemented here and the tests done in the original version of the paper cited above. First is that here we only record performance once every epoch, instead of multiple times per epoch. Second, in the original tests, we randomly generated one test set *before* running the trials in which fresh training data was randomly generated. In contrast, the tests here generate both the training and testing data fresh for each trial.
+
 
 <a id="demos"></a>
 ## List of demos
