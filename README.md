@@ -84,6 +84,7 @@ The `descriptor` depends on the evaluation metrics used, all specified in `setup
 <a id="demos"></a>
 ## List of demos
 
-This repository includes detailed demonstrations to walk the user through re-creating the results in the paper cited at the top of this document. Below is a list of demo links which give our demos (originally in Jupyter notebook form) rendered using the useful <a href="https://github.com/jupyter/nbviewer">nbviewer</a> service.
+This repository includes detailed demonstrations to walk the user through re-creating the results in the paper cited at the top of this document. Below is a list of demo links which give our demos (constructed in Jupyter notebook form) rendered using the useful <a href="https://github.com/jupyter/nbviewer">nbviewer</a> service.
 
-- <a href="https://nbviewer.jupyter.org/github/feedbackward/robrisk/blob/main/robrisk/demo.ipynb">Demo: empirical analysis of CVaR-based learning</a>
+- <a href="https://nbviewer.jupyter.org/github/feedbackward/robrisk/blob/main/robrisk/demo_static.ipynb">Demo: competing methods for CVaR estimation</a>
+- <a href="https://nbviewer.jupyter.org/github/feedbackward/robrisk/blob/main/robrisk/demo_dynamic.ipynb">Demo: empirical analysis of CVaR-based learning</a>
