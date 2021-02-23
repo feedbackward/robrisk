@@ -1,6 +1,7 @@
 '''Setup: loss functions used for training and evaluation.'''
 
 ## Internal modules.
+from mml.losses.absolute import Absolute
 from mml.losses.classification import Zero_One
 from mml.losses.cvar import CVaR
 from mml.losses.logistic import Logistic
@@ -13,6 +14,7 @@ from mml.losses.quadratic import Quadratic
 ## A dictionary of instantiated losses.
 
 dict_losses = {
+    "absolute": Absolute(),
     "logistic": Logistic(),
     "quadratic": Quadratic(),
     "zero_one": Zero_One()
