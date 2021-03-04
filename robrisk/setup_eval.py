@@ -79,10 +79,6 @@ def eval_model(epoch, model, storage, data, eval_dict):
     ## Carry out relevant evaluations.
     for key in store_train.keys():
         evaluator = eval_dict[key]
-        print("DBDB: {} evaluated values:".format(key),
-                  evaluator(model=model,
-                            X=X_train,
-                            y=y_train))
         store_train[key][epoch,0] = evaluator(model=model,
                                               X=X_train,
                                               y=y_train)
