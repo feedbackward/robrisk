@@ -39,7 +39,7 @@ def get_eval(loss_name=None, model_name=None, **kwargs):
         loss_eval = lambda model, X, y: np.mean(loss(model=model,
                                                      X=X, y=y))
         if kwargs["use_cvar"]:
-            ## If CVaR loss used for training, then include original too.
+            ## If CVaR loss used for training, then include *original* too.
             loss_base = get_loss(name=loss_name, **{"use_cvar": False})
             loss_base_eval = lambda model, X, y: np.mean(loss_base(model=model,
                                                                    X=X, y=y))
@@ -49,7 +49,7 @@ def get_eval(loss_name=None, model_name=None, **kwargs):
             ## Otherwise there is only the original to add.
             eval_dict.update({loss_name: loss_eval})
 
-        ## Now some additional context-specific 
+        ## Now some additional context-specific prep.
         if loss_name == "quadratic" and model_name == "linreg":
             risk_eval = lambda model, X, y: risk_quadratic_linreg(
                 w=model.paras["w"],
@@ -58,9 +58,9 @@ def get_eval(loss_name=None, model_name=None, **kwargs):
                 b=np.sqrt(kwargs["noise_var"])
             )
             eval_dict.update({"risk": risk_eval})
-
-        if loss_name == "logistic":
-            loss_01 = get_loss(name="zero_one")
+        
+        elif loss_name == "logistic":
+            loss_01 = get_loss(name="zero_one", **{"use_cvar": False})
             loss_01_eval = lambda model, X, y: np.mean(loss_01(model=model,
                                                                X=X, y=y))
             eval_dict.update({"zero_one": loss_01_eval})
@@ -79,6 +79,10 @@ def eval_model(epoch, model, storage, data, eval_dict):
     ## Carry out relevant evaluations.
     for key in store_train.keys():
         evaluator = eval_dict[key]
+        print("DBDB: {} evaluated values:".format(key),
+                  evaluator(model=model,
+                            X=X_train,
+                            y=y_train))
         store_train[key][epoch,0] = evaluator(model=model,
                                               X=X_train,
                                               y=y_train)
