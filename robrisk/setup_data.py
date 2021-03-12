@@ -16,9 +16,7 @@ from mml.utils.rgen import get_generator, get_stats
 
 ## If benchmark data is to be used, specify the directory here.
 dir_data_toread = os.path.join(str(Path.home()),
-                               "Dropbox", "2_research",
-                               "code", "dev",
-                               "mml-dev", "mml", "data")
+                               "mml", "mml", "data")
 
 
 ## First set dataset parameter dictionary with standard values
