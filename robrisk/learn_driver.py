@@ -67,10 +67,6 @@ parser.add_argument("--task-name",
                     help="A task name. Default is the word default.",
                     type=str, default="default", metavar="S")
 
-## Setup of random generator.
-ss = np.random.SeedSequence()
-rg = np.random.default_rng(seed=ss)
-
 ## Parse the arguments passed via command line.
 args = parser.parse_args()
 if args.data is None:
@@ -87,9 +83,9 @@ towrite_dir = os.path.join(results_dir, args.data)
 makedir_safe(towrite_dir)
 
 ## Setup of manually-specified seed sequence for data generation.
-ss_data_parent = np.random.SeedSequence(args.entropy)
-ss_data_children = ss_data_parent.spawn(args.num_trials)
-rgs_data = [np.random.default_rng(seed=s) for s in ss_data_children]
+ss_parent = np.random.SeedSequence(args.entropy)
+ss_children = ss_parent.spawn(args.num_trials)
+rg_children = [np.random.default_rng(seed=ss) for ss in ss_children]
 
 
 if __name__ == "__main__":
@@ -111,12 +107,12 @@ if __name__ == "__main__":
     for trial in range(args.num_trials):
 
         ## Get trial-specific random generator.
-        rg_data = rgs_data[trial]
+        rg_child = rg_children[trial]
         
         ## Load in data.
         print("Doing data prep.")
         (X_train, y_train, X_val, y_val,
-         X_test, y_test, ds_paras) = get_data(dataset=args.data, rg=rg_data)
+         X_test, y_test, ds_paras) = get_data(dataset=args.data, rg=rg_child)
 
         ## Validation data not used here; use all for training.
         if X_val is not None:
@@ -138,14 +134,14 @@ if __name__ == "__main__":
         model_ancillary = get_model(
             name=args.model,
             paras_init=None,
-            rg=rg,
+            rg=rg_child,
             **loss_kwargs, **model_kwargs, **ds_paras
         )
         if args.algo_main is not None and len(args.algo_main) > 0:
             model_main = get_model(
                 name=args.model,
                 paras_init=deepcopy(model_ancillary.paras),
-                rg=rg,
+                rg=rg_child,
                 **loss_kwargs, **model_kwargs, **ds_paras
             )
         else:
@@ -193,9 +189,9 @@ if __name__ == "__main__":
             print("(Tr {}) Ep {} starting.".format(trial, epoch))
             
             ## Shuffle data.
-            rg.shuffle(data_idx)
-            X_train = X_train[data_idx,...]
-            y_train = y_train[data_idx,...]
+            rg_child.shuffle(data_idx)
+            X_train = X_train[data_idx,:]
+            y_train = y_train[data_idx,:]
 
             ## Carry out one epoch's worth of training.
             train_epoch(algo=algo_ancillary,
@@ -228,8 +224,7 @@ if __name__ == "__main__":
     ## Write a JSON file to disk that summarizes key experiment parameters.
     dict_to_json = vars(args)
     dict_to_json.update({
-        "ss_entropy": ss.entropy,
-        "ss_data_entropy": args.entropy
+        "entropy": args.entropy
     })
     towrite_json = os.path.join(towrite_dir, towrite_name+".json")
     with open(towrite_json, "w", encoding="utf-8") as f:
