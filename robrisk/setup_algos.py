@@ -7,7 +7,7 @@ import numpy as np
 from mml.algos import Algorithm
 from mml.algos.gd import GD_ERM
 from mml.algos.rgd import RGD_Mest
-from mml.utils.mest import est_loc_fixedpt, inf_gudermann, est_scale_chi_fixedpt, chi_geman_quad
+from mml.utils.mest import est_loc_fixedpt, inf_tanh, est_scale_chi_fixedpt, chi_geman_quad
 
 
 ###############################################################################
@@ -38,7 +38,7 @@ class Weighted_Average(Algorithm):
 
 ## Detailed setup for algorithms.
 
-_inf_fn = inf_gudermann # influence function.
+_inf_fn = inf_tanh # influence function.
 _est_loc = lambda X, s, thres, iters: est_loc_fixedpt(X=X, s=s,
                                                       inf_fn=_inf_fn,
                                                       thres=thres,

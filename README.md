@@ -1,6 +1,6 @@
 # robrisk: learning with diverse risk functions under potentially heavy-tailed feedback
 
-This repository will houses code for recreating the numerical experiments done in the following paper:
+This repository houses software for recreating the numerical experiments done in the following paper:
 
 - Learning with risk-averse feedback under potentially heavy tails. Matthew J. Holland and El Mehdi Haress. *AISTATS 2021*.
 
