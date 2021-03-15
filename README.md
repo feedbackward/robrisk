@@ -8,52 +8,48 @@ The software here can be used to faithfully reproduce all the experimental resul
 
 A table of contents for this README file:
 
-- <a href="#code">Setup: software for numerical experiments</a>
+- <a href="#setup_init">Setup: initial software preparation</a>
+- <a href="#start">Getting started</a>
 - <a href="#demos">List of demos</a>
-
-Before starting on the setup, we assume the following about the user's environment:
-
-- has access to a `bash` shell
-- can use `wget` to download datasets
-- has `unzip`, `git`, and `conda` installed
-
-and finally that the user has run
-
-```
-$ conda update -n base conda
-```
-
-This repository contains code which is "local" to the experiments done in the above papers, but it makes use of many functions which are of a much more general-purpose nature. Such functions are implemented seperately in our <a href="https://github.com/feedbackward/mml">mml</a> and <a href="https://github.com/feedbackward/sgd-roboost">sgd-roboost</a> repositories (details given below).
-
-Let us now proceed to the software setup.
+- <a href="#safehash">Safe hash values</a>
 
 
-<a id="code"></a>
-## Setup: software for numerical experiments
+<a id="setup_init"></a>
+## Setup: initial software preparation
 
-We begin with software that is directly related to the demos of interest. We proceed assuming that the user is working in a directory that does *not* contain directories with the names of those we are about to `clone` (i.e., does __not__ contain `robrisk`, `mml`, or `sgd-roboost`).
+To begin, please ensure you have the <a href="https://github.com/feedbackward/mml#prereq">prerequisite software</a> used in the setup of our `mml` repository.
 
-With these prerequisites understood and in place, the clerical setup is quite easy. The main initial steps are as follows.
+Next, make a local copy of the repository and create a virtual environment for working in as follows:
 
 ```
-$ git clone https://github.com/feedbackward/robrisk.git
 $ git clone https://github.com/feedbackward/mml.git
+$ git clone https://github.com/feedbackward/robrisk.git
 $ git clone https://github.com/feedbackward/sgd-roboost.git
 $ conda create -n robrisk python=3.8 jupyter matplotlib pip pytables scipy
 $ conda activate robrisk
-(robrisk) $ cd mml
-(robrisk) $ git checkout [SHA mml]
-(robrisk) $ pip install -e ./
-(robrisk) $ cd ../sgd-roboost
-(robrisk) $ git checkout [SHA sgd-roboost]
-(robrisk) $ pip install -e ./
-(robrisk) $ cd ../robrisk
 ```
 
-For the `[SHA *]` placeholders, the following are safe, tested values (tested 2021/02/22):
+Having made (and activated) this new environment, we would like to use `pip` to install the supporting libraries for convenient access. This is done easily, by simply running
 
-- For `[SHA mml]`, replace with `6ee6a8f924b610ccfb9c5239e852ac7df72cf14c`.
-- For `[SHA sgd-roboost]`, replace with `47cc2e9e4b240590bc3ed369086c8e78bba194a7`.
+```
+(robrisk) $ cd [mml path]/mml
+(robrisk) $ pip install -e ./
+(robrisk) $ cd [sgd-roboost path]/sgd-roboost
+(robrisk) $ pip install -e ./
+```
+
+with the `[* path]` placeholders replaced with the path to wherever you used `clone` to copy the repositories to. If you desire a safe, tested version of `mml` and `sgd-roboost`, just run
+
+```
+(robrisk) $ git checkout [safe hash mml]
+(robrisk) $ git checkout [safe hash sgd-roboost]
+```
+
+before the `pip install -e ./` commands above. The `[safe hash *]` placeholders are to be replaced using the <a href="#safehash">safe hash values</a> given at the end of this document.
+
+
+<a id="start"></a>
+## Getting started
 
 One __important__ clerical step is to modify the variable `todo_roboost` in `sgd-roboost/roboost/setup_roboost.py`; the default is a list of many different methods, but for our purposes here, we will only use (and indeed only allow) one, although any one is fine. The default used in all our relevant experiments is as follows:
 
@@ -90,3 +86,12 @@ This repository includes detailed demonstrations to walk the user through re-cre
 
 - <a href="https://nbviewer.jupyter.org/github/feedbackward/robrisk/blob/main/robrisk/demo_static.ipynb">Demo: competing methods for CVaR estimation</a>
 - <a href="https://nbviewer.jupyter.org/github/feedbackward/robrisk/blob/main/robrisk/demo_dynamic.ipynb">Demo: empirical analysis of CVaR-based learning</a>
+
+
+<a id="safehash"></a>
+## Safe hash values
+
+- Replace `[safe hash mml]` with `1f6fa730e86ad7da88ba5b33400b0ec476d2cd1d`.
+- Replace `[safe hash sgd-roboost]` with `4fc4fb5d129d0fbc93813d101ee141ad01fce1c4`
+
+__Date of safe hash test:__ 2021/03/12.
