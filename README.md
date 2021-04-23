@@ -1,8 +1,8 @@
-# robrisk: learning with diverse risk functions under potentially heavy-tailed feedback
+# robrisk: learning with CVaR-based risk, under potentially heavy-tailed feedback
 
 This repository houses software for recreating the numerical experiments done in the following paper:
 
-- Learning with risk-averse feedback under potentially heavy tails. Matthew J. Holland and El Mehdi Haress. *AISTATS 2021*.
+- <a href="http://proceedings.mlr.press/v130/holland21b.html">Learning with risk-averse feedback under potentially heavy tails</a>. Matthew J. Holland and El Mehdi Haress. *AISTATS 2021*.
 
 The software here can be used to faithfully reproduce all the experimental results given in the above paper, and can also be easily applied to more general machine learning tasks, going well beyond the examples considered here.
 
